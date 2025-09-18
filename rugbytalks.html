@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rugby Conversation Starters</title>
+  <style>
+    :root{--bg:#f2f5f8;--card:#ffffff;--accent:#ffca28;--text:#0b1220}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--text)}
+    .card{width:min(760px,92vw);padding:36px;border-radius:12px;background:var(--card);box-shadow:0 8px 30px rgba(2,6,23,0.06);text-align:center}
+    .question{font-size:clamp(18px,3.2vw,28px);line-height:1.4;margin:0 0 22px;cursor:pointer;user-select:none;color:var(--text)}
+    .hint{font-size:13px;color:rgba(11,18,32,0.6);margin-bottom:18px}
+    .controls{display:flex;gap:10px;justify-content:center}
+    button{background:transparent;border:1px solid rgba(11,18,32,0.08);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer}
+    button.primary{background:var(--accent);color:#071426;border:none}
+    .small{font-size:13px;color:rgba(11,18,32,0.6);margin-top:14px}
+  </style>
+</head>
+<body>
+  <div class="card" role="main" aria-live="polite">
+    <div id="question" class="question" tabindex="0" title="Klik of druk Enter/Space om de volgende vraag te zien"></div>
+    <div class="hint">Klik de vraag (of druk Enter/Space) om de volgende te tonen. Vragen worden willekeurig weergegeven en blijven doorlopen.</div>
+    <div class="controls">
+      <button id="prevBtn">Vorige</button>
+      <button id="nextBtn" class="primary">Volgende</button>
+      <button id="shuffleBtn">Schud</button>
+      <button id="downloadBtn">Download</button>
+    </div>
+    <div class="small">Tip: deel deze pagina met teamgenoten. Lokale opslag onthoudt de positie.</div>
+  </div>
+
+  <script>
+    const QUESTIONS = [
+      "What’s your best rugby memory and what made it so special?",
+      "What was the exact moment you realized you loved playing rugby?",
+      "What’s been your hardest or most difficult game so far, and why was it so tough?",
+      "If you could borrow one superpower or signature skill from any rugby player, who would it be and why?",
+      "What’s your earliest rugby memory?",
+      "Who (player, coach, or teammate) inspired you most in rugby, and what did they teach you?",
+      "What’s one mistake you made early in your rugby career that ended up teaching you the most?",
+      "Which teammate’s qualities do you admire most off the field, and how have they impacted the team?",
+      "What pre-match ritual or routine do you hold onto, and how did it start?",
+      "Tell us about a time when rugby helped you through something difficult in life.",
+      "What role do you most enjoy playing on the team — and what does that role reveal about who you are?",
+      "If you could change one thing about how rugby is played or coached, what would it be and why?",
+      "What’s a small, overlooked moment in a match (a tackle, pass, shout, or decision) that you still replay in your head?",
+      "Who on the team would you want beside you in a clutch moment and why?",
+      "What do you want your teammates (or fans) to remember about you as a player and a person?"
+    ];
+
+    let order = [];
+    let index = 0;
+    const storageKey = "rugby_question_state_v1";
+
+    const qEl = document.getElementById("question");
+    const nextBtn = document.getElementById("nextBtn");
+    const prevBtn = document.getElementById("prevBtn");
+    const shuffleBtn = document.getElementById("shuffleBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+
+    function shuffleArray(a){
+      for(let i=a.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+      }
+      return a;
+    }
+
+    function initOrder(){
+      order = Array.from(QUESTIONS.keys());
+      shuffleArray(order);
+      index = 0;
+    }
+
+    function saveState(){
+      try{ localStorage.setItem(storageKey, JSON.stringify({order, index})); }catch(e){}
+    }
+
+    function loadState(){
+      try{
+        const raw = localStorage.getItem(storageKey);
+        if(!raw) return false;
+        const obj = JSON.parse(raw);
+        if(Array.isArray(obj.order) && typeof obj.index === "number"){
+          order = obj.order;
+          index = obj.index % order.length;
+          return true;
+        }
+      }catch(e){}
+      return false;
+    }
+
+    function showCurrent(){
+      if(!order.length) initOrder();
+      const q = QUESTIONS[order[index]];
+      qEl.textContent = q;
+      qEl.setAttribute("data-pos", index+1);
+      saveState();
+    }
+
+    function next(){
+      index++;
+      if(index >= order.length){
+        const used = order.slice();
+        initOrder();
+        if(order[0] === used[used.length-1] && order.length > 1){
+          const tmp = order[0];
+          order[0] = order[1];
+          order[1] = tmp;
+        }
+      }
+      showCurrent();
+    }
+
+    function prev(){
+      index--;
+      if(index < 0) index = order.length-1;
+      showCurrent();
+    }
+
+    function downloadTxt(){
+      const blob = new Blob([QUESTIONS.join("\n\n")], {type:"text/plain;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "rugby-conversation-starters.txt";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    if(!loadState()) initOrder();
+    showCurrent();
+
+    nextBtn.addEventListener("click", next);
+    prevBtn.addEventListener("click", prev);
+    shuffleBtn.addEventListener("click", ()=>{ initOrder(); showCurrent(); });
+    downloadBtn.addEventListener("click", downloadTxt);
+
+    qEl.addEventListener("click", next);
+    qEl.addEventListener("keydown", (e)=>{
+      if(e.key === "Enter" || e.key === " ") { e.preventDefault(); next(); }
+    });
+
+    document.addEventListener("keydown", (e)=>{
+      if(e.key === "ArrowRight") next();
+      if(e.key === "ArrowLeft") prev();
+      if(e.key.toLowerCase() === "s") { initOrder(); showCurrent(); }
+    });
+  </script>
+</body>
+</html>
